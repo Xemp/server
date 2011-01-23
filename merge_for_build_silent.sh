@@ -1,6 +1,6 @@
 #!/bin/sh
  
-BRANCHES="scriptdevzero-nix scriptdevzero-win"
+BRANCHES="scriptdevzero-nix scriptdevzero-win ace_autoconf_fix"
  
 ## Make a new temporary branch
 git checkout master
