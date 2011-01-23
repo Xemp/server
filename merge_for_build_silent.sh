@@ -1,6 +1,6 @@
 #!/bin/sh
  
-BRANCHES="windows_build_fix"
+BRANCHES="scriptdevzero-nix scriptdevzero-win"
  
 ## Make a new temporary branch
 git checkout master
@@ -13,8 +13,7 @@ for i in $BRANCHES
 do
   echo "Start mergeing branch $i"
   git merge "$i"
- 
-  fi
+
   if [ "$?" != "0" ]
   then
     ## Something went wrong
