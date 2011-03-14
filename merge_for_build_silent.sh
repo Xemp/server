@@ -1,6 +1,6 @@
 #!/bin/sh
  
-BRANCHES="scriptdevzero-nix scriptdevzero-win ace_autoconf_fix"
+BRANCHES="scriptdevzero-nix ace_autoconf_fix mmaps_zero"
  
 ## Make a new temporary branch
 git checkout master
