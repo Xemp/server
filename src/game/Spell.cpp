@@ -2432,9 +2432,12 @@ void Spell::prepare(SpellCastTargets const* targets, Aura* triggeredByAura)
 
     // stealth must be removed at cast starting (at show channel bar)
     // skip triggered spell (item equip spell casting and other not explicit character casts/item uses)
-    if ( !m_IsTriggeredSpell && isSpellBreakStealth(m_spellInfo) )
+    if ( !m_IsTriggeredSpell && isSpellBreakStealth(m_spellInfo))
     {
-        m_caster->RemoveSpellsCausingAura(SPELL_AURA_MOD_STEALTH);
+        // Sap - don't exit Stealth yet to prevent getting in combat and making Sap impossible to cast
+        // destealth depending on talent later in Spell::cast
+        if (!(m_spellInfo->SpellFamilyName == SPELLFAMILY_ROGUE && m_spellInfo->SpellFamilyFlags & UI64LIT(0x00000080)))
+            m_caster->RemoveSpellsCausingAura(SPELL_AURA_MOD_STEALTH);
         m_caster->RemoveSpellsCausingAura(SPELL_AURA_FEIGN_DEATH);
     }
 
@@ -2617,6 +2620,28 @@ void Spell::cast(bool skipCheck)
     m_targets.updateTradeSlotItem();
 
     FillTargetMap();
+
+    // Sap - remove Stealth if no talent or bad luck
+    if(m_spellInfo->SpellFamilyName == SPELLFAMILY_ROGUE && m_spellInfo->SpellFamilyFlags & UI64LIT(0x00000080) && m_caster->GetTypeId() == TYPEID_PLAYER)
+    {
+        // Improved Sap
+        if (m_caster->GetAura(14076,SpellEffectIndex(0)) ||
+            m_caster->GetAura(14094,SpellEffectIndex(0)) ||
+            m_caster->GetAura(14095,SpellEffectIndex(0)))
+        {
+            Unit::AuraList const& procAuras = m_caster->GetAurasByType(SPELL_AURA_PROC_TRIGGER_SPELL);
+            for(Unit::AuraList::const_iterator i = procAuras.begin(); i != procAuras.end(); ++i)
+            {
+                if ((*i)->GetSpellProto()->SpellIconID == 249 && !roll_chance_i((*i)->GetSpellProto()->procChance))
+                {
+                    m_caster->RemoveSpellsCausingAura(SPELL_AURA_MOD_STEALTH);
+                    break;
+                }
+            }
+        }
+        else
+            m_caster->RemoveSpellsCausingAura(SPELL_AURA_MOD_STEALTH);
+    }
 
     if(m_spellState == SPELL_STATE_FINISHED)                // stop cast if spell marked as finish somewhere in FillTargetMap
     {
