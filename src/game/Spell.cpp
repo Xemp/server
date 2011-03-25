@@ -5023,6 +5023,17 @@ SpellCastResult Spell::CheckRange(bool strict)
             return SPELL_FAILED_TOO_CLOSE;
     }
 
+    if(Pet* casterPet = m_caster->GetPet())
+    {
+        // don't cast Mend Pet / Health Funnel if not in range
+        if(((m_spellInfo->SpellFamilyName == SPELLFAMILY_HUNTER && m_spellInfo->SpellIconID == 267) ||
+            (m_spellInfo->SpellFamilyName == SPELLFAMILY_WARLOCK && m_spellInfo->SpellIconID == 153)) &&
+            !m_caster->IsWithinDistInMap(casterPet,GetSpellMaxRange(srange)))
+        {
+            return SPELL_FAILED_OUT_OF_RANGE;
+        }
+    }
+
     return SPELL_CAST_OK;
 }
 
