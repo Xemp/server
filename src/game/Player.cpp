@@ -11507,8 +11507,9 @@ void Player::SendPreparedGossip(WorldObject *pSource)
 
     if (pSource->GetTypeId() == TYPEID_UNIT)
     {
-        // in case no gossip flag and quest menu not empty, open quest menu (client expect gossip menu with this flag)
-        if (!((Creature*)pSource)->HasFlag(UNIT_NPC_FLAGS,UNIT_NPC_FLAG_GOSSIP) && !PlayerTalkClass->GetQuestMenu().Empty())
+        // in case no gossip and no vendor flag and quest menu not empty, open quest menu (client expect gossip menu with this flag)
+        if (!((Creature*)pSource)->HasFlag(UNIT_NPC_FLAGS,UNIT_NPC_FLAG_GOSSIP) && !PlayerTalkClass->GetQuestMenu().Empty() &&
+            !((Creature*)pSource)->HasFlag(UNIT_NPC_FLAGS,UNIT_NPC_FLAG_VENDOR))
         {
             SendPreparedQuest(pSource->GetObjectGuid());
             return;
