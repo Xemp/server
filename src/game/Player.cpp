@@ -11791,7 +11791,7 @@ void Player::SendPreparedQuest(ObjectGuid guid)
             else if( status == DIALOG_STATUS_INCOMPLETE )
                 PlayerTalkClass->SendQuestGiverRequestItems( pQuest, guid, false, true );
             // Send completable on repeatable quest if player don't have quest
-            else if( pQuest->IsRepeatable())
+            else if( pQuest->IsRepeatable() && pQuest->GetDetails().empty() && pQuest->GetObjectives().empty())
                 PlayerTalkClass->SendQuestGiverRequestItems( pQuest, guid, CanCompleteRepeatableQuest(pQuest), true );
             else
                 PlayerTalkClass->SendQuestGiverQuestDetails( pQuest, guid, true );
@@ -12042,7 +12042,7 @@ bool Player::CanCompleteRepeatableQuest(Quest const *pQuest) const
 bool Player::CanRewardQuest(Quest const *pQuest, bool msg) const
 {
     // not auto complete quest and not completed quest (only cheating case, then ignore without message)
-    if (!pQuest->IsAutoComplete() && GetQuestStatus(pQuest->GetQuestId()) != QUEST_STATUS_COMPLETE)
+    if (!pQuest->IsAutoComplete() && GetQuestStatus(pQuest->GetQuestId()) != QUEST_STATUS_COMPLETE && !pQuest->IsRepeatable())
         return false;
 
     // rewarded and not repeatable quest (only cheating case, then ignore without message)

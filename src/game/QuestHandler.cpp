@@ -283,11 +283,11 @@ void WorldSession::HandleQuestgiverRequestRewardOpcode( WorldPacket & recv_data 
     if (_player->CanCompleteQuest(quest))
         _player->CompleteQuest(quest);
 
-    if (_player->GetQuestStatus(quest) != QUEST_STATUS_COMPLETE)
-        return;
-
     if (Quest const *pQuest = sObjectMgr.GetQuestTemplate(quest))
-        _player->PlayerTalkClass->SendQuestGiverOfferReward(pQuest, guid, true);
+    {
+        if (_player->GetQuestStatus(quest) == QUEST_STATUS_COMPLETE || pQuest->IsRepeatable())
+            _player->PlayerTalkClass->SendQuestGiverOfferReward(pQuest, guid, true);
+    }
 }
 
 void WorldSession::HandleQuestgiverCancel(WorldPacket& /*recv_data*/ )
