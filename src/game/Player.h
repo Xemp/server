@@ -1949,6 +1949,9 @@ class MANGOS_DLL_SPEC Player : public Unit
 
         Object* GetObjectByTypeMask(ObjectGuid guid, TypeMask typemask);
 
+		// neu von sevi
+		  WorldLocation GetStartPosition() const;
+
         // currently visible objects at player client
         ObjectGuidSet m_clientGUIDs;
 
