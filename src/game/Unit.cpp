@@ -7356,6 +7356,19 @@ uint32 Unit::GetCreatureType() const
         return ((Creature*)this)->GetCreatureInfo()->type;
 }
 
+uint32 Unit::getRaceMask() const
+{
+    if (GetTypeId() == TYPEID_PLAYER)
+    {
+        if (getFaction() != Player::getFactionForRace(getRace()))
+            return 1 << (Player::getOppositeRace(getRace())-1);
+        else
+            return 1 << (getRace()-1);
+    }
+    else
+        return 1 << (getRace()-1);
+}
+
 /*#######################################
 ########                         ########
 ########       STAT SYSTEM       ########

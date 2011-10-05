@@ -50,6 +50,19 @@ int32 ReputationMgr::GetReputation(uint32 faction_id) const
     return GetReputation(factionEntry);
 }
 
+int32 ReputationMgr::GetBaseReputation(uint32 faction_id) const
+{
+    FactionEntry const *factionEntry = sFactionStore.LookupEntry(faction_id);
+
+    if (!factionEntry)
+    {
+        sLog.outError("ReputationMgr::GetBaseReputation: Can't get reputation of %s for unknown faction (faction id) #%u.",m_player->GetName(), faction_id);
+        return 0;
+    }
+
+    return GetBaseReputation(factionEntry);
+}
+
 int32 ReputationMgr::GetBaseReputation(FactionEntry const* factionEntry) const
 {
     if (!factionEntry)
@@ -61,6 +74,57 @@ int32 ReputationMgr::GetBaseReputation(FactionEntry const* factionEntry) const
     int idx = factionEntry->GetIndexFitTo(raceMask, classMask);
 
     return idx >= 0 ? factionEntry->BaseRepValue[idx] : 0;
+}
+
+/**
+ * Gets the FactionEntry from the faction_id and returns the difference
+ * of the opposite race's reputation for it.
+ *
+ * @param faction_id the id number of the faction to be returned.
+ * @returns the difference between the opposing races reputation.
+ *
+ */
+int32 ReputationMgr::GetBaseReputationDifference(uint32 faction_id) const
+{
+    FactionEntry const *factionEntry = sFactionStore.LookupEntry(faction_id);
+
+    if (!factionEntry)
+    {
+        sLog.outError("ReputationMgr::GetBaseReputationDifference: Can't get reputation of %s for unknown faction (faction id) #%u.",m_player->GetName(), faction_id);
+        return 0;
+    }
+
+    return GetBaseReputationDifference(factionEntry);
+}
+
+/**
+ * Gets the current race's difference of reputation of the
+ * factionEntry and the opposite race's reputation.
+ *
+ * @param factionEntry the faction to be returned.
+ * @returns the difference between the opposing races reputation.
+ *
+ */
+int32 ReputationMgr::GetBaseReputationDifference(FactionEntry const* factionEntry) const
+{
+    if (!factionEntry)
+        return 0;
+
+    uint32 raceMask = m_player->getRaceMask();
+    uint32 classMask = m_player->getClassMask();
+    uint32 diffvalue = 0;
+
+    if (m_player->IsTraitor())
+    {
+        uint32 raceMaskReal = m_player->getRaceMaskReal();
+        int diffidx = factionEntry->GetIndexFitTo(raceMaskReal, classMask);
+
+        diffvalue = factionEntry->BaseRepValue[diffidx];
+    }
+
+    int idx = factionEntry->GetIndexFitTo(raceMask, classMask);
+
+    return idx >= 0 ? factionEntry->BaseRepValue[idx] - diffvalue: 0;
 }
 
 int32 ReputationMgr::GetReputation(FactionEntry const* factionEntry) const
@@ -125,12 +189,16 @@ void ReputationMgr::SendState(FactionState const* faction)
 {
     uint32 count = 1;
 
+    int32 standing = faction->Standing;
+    if (m_player->IsTraitor())
+        standing += GetBaseReputationDifference(faction->ID);
+
     WorldPacket data(SMSG_SET_FACTION_STANDING, (16));      // last check 2.4.0
     size_t p_count = data.wpos();
     data << (uint32) count;                                 // placeholder
 
     data << (uint32) faction->ReputationListID;
-    data << (uint32) faction->Standing;
+    data << (uint32) standing;
 
     for(FactionStateList::iterator itr = m_factions.begin(); itr != m_factions.end(); ++itr)
     {
@@ -140,7 +208,13 @@ void ReputationMgr::SendState(FactionState const* faction)
             if (itr->second.ReputationListID != faction->ReputationListID)
             {
                 data << (uint32) itr->second.ReputationListID;
-                data << (uint32) itr->second.Standing;
+
+                standing = itr->second.Standing;
+                if (m_player->IsTraitor())
+                    standing += GetBaseReputationDifference(itr->second.ID);
+
+                data << (uint32) standing;
+
                 ++count;
             }
         }
@@ -159,6 +233,10 @@ void ReputationMgr::SendInitialReputations()
 
     for (FactionStateList::iterator itr = m_factions.begin(); itr != m_factions.end(); ++itr)
     {
+        int32 standing = itr->second.Standing;
+        if (m_player->IsTraitor())
+            standing += GetBaseReputationDifference(itr->second.ID);
+
         // fill in absent fields
         for (; a != itr->first; a++)
         {
@@ -168,7 +246,7 @@ void ReputationMgr::SendInitialReputations()
 
         // fill in encountered data
         data << uint8  (itr->second.Flags);
-        data << uint32 (itr->second.Standing);
+        data << uint32 (standing);
 
         itr->second.needSend = false;
 
@@ -183,6 +261,12 @@ void ReputationMgr::SendInitialReputations()
     }
 
     m_player->SendDirectMessage(&data);
+}
+
+void ReputationMgr::SendStates()
+{
+    for(FactionStateList::const_iterator itr = m_factions.begin(); itr != m_factions.end(); ++itr)
+        SendState(&(itr->second));
 }
 
 void ReputationMgr::SendVisible(FactionState const* faction) const
@@ -215,6 +299,45 @@ void ReputationMgr::Initialize()
             newFaction.needSave = true;
 
             m_factions[newFaction.ReputationListID] = newFaction;
+        }
+    }
+}
+
+/**
+ * This method is called to set the defaults for the originally visible, at peace,
+ * at war, or invisible for the current race.
+ *
+ */
+void ReputationMgr::SetBaseDefaults()
+{
+    for(unsigned int i = 1; i < sFactionStore.GetNumRows(); i++)
+    {
+        FactionEntry const *factionEntry = sFactionStore.LookupEntry(i);
+
+        if( factionEntry && (factionEntry->reputationListID >= 0))
+        {
+            FactionState* faction = &m_factions[factionEntry->reputationListID];
+            uint32 defaultFlags = GetDefaultStateFlags(factionEntry);
+
+            // if faction matches any flags then update
+            // this resets the default standings to 0, should be better way for this
+            if( (defaultFlags & FACTION_FLAG_VISIBLE) ||
+                (defaultFlags & FACTION_FLAG_INVISIBLE_FORCED) ||
+                (defaultFlags & FACTION_FLAG_AT_WAR) ||
+                (defaultFlags & FACTION_FLAG_PEACE_FORCED) )
+            {
+                if (faction->Standing != 0)
+                {
+                    faction->Standing = 0;
+                    faction->needSend = true;
+                }
+
+                if (faction->Flags != defaultFlags)
+                {
+                    faction->Flags = defaultFlags;
+                    faction->needSend = true;
+                }
+            }
         }
     }
 }

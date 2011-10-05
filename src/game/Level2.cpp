@@ -3756,6 +3756,28 @@ bool ChatHandler::HandleCharacterReputationCommand(char* args)
     return true;
 }
 
+bool ChatHandler::HandleCharacterSwitchTeamCommand(char* args)
+{
+    Player* target;
+    ObjectGuid target_guid;
+    std::string target_name;
+    if(!ExtractPlayerTarget(&args, &target, &target_guid, &target_name))
+        return false;
+
+    if(target)
+    {
+        PSendSysMessage("You changed teams for player %s.", GetNameLink(target).c_str());
+        target->changeFactionToOpposite(target->getRace());
+    }
+    else
+    {
+        PSendSysMessage(LANG_NO_CHAR_SELECTED);
+        return false;
+    }
+
+    return true;
+}
+
 //change standstate
 bool ChatHandler::HandleModifyStandStateCommand(char* args)
 {

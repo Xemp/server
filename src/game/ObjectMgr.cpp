@@ -1237,17 +1237,21 @@ Team ObjectMgr::GetPlayerTeamByGUID(ObjectGuid guid) const
 {
     // prevent DB access for online player
     if (Player* player = GetPlayer(guid))
-        return Player::TeamForRace(player->getRace());
+        return player->GetTeam();
 
     uint32 lowguid = guid.GetCounter();
 
-    QueryResult *result = CharacterDatabase.PQuery("SELECT race FROM characters WHERE guid = '%u'", lowguid);
+    QueryResult *result = CharacterDatabase.PQuery("SELECT race, faction FROM characters WHERE guid = '%u'", lowguid);
 
     if (result)
     {
         uint8 race = (*result)[0].GetUInt8();
+        uint8 faction = (*result)[1].GetUInt32();
         delete result;
-        return Player::TeamForRace(race);
+        if ( (faction != 0) && (faction != Player::getFactionForRace(race)) )
+            return Player::TeamForRace(Player::getOppositeRace(race));
+        else
+            return Player::TeamForRace(race);
     }
 
     return TEAM_NONE;

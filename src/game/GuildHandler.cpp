@@ -123,6 +123,14 @@ void WorldSession::HandleGuildInviteOpcode(WorldPacket& recvPacket)
 
     DEBUG_LOG("Player %s Invited %s to Join his Guild", GetPlayer()->GetName(), Invitedname.c_str());
 
+    // If player is an enemy of the current player, give warning
+    if (player->GetTeam() != GetPlayer()->GetTeam())
+        if (player->IsInWorld())
+        {
+            player->GetSession()->SendNotification("You have been invited to join an enemy guild.");
+            sWorld.SendServerMessage(SERVER_MSG_CUSTOM, "By joining an enemy guild, you will be a traitor. You will lose your reputation with your people.", player);
+        }
+
     player->SetGuildIdInvited(GetPlayer()->GetGuildId());
     // Put record into guildlog
     guild->LogGuildEvent(GUILD_EVENT_LOG_INVITE_PLAYER, GetPlayer()->GetObjectGuid(), player->GetObjectGuid());
@@ -213,6 +221,10 @@ void WorldSession::HandleGuildAcceptOpcode(WorldPacket& /*recvPacket*/)
     guild->LogGuildEvent(GUILD_EVENT_LOG_JOIN_GUILD, GetPlayer()->GetObjectGuid());
 
     guild->BroadcastEvent(GE_JOINED, player->GetObjectGuid(), player->GetName());
+
+    // If player was an enemy to the current player, change to a traitor
+    if (player->GetTeam() != sObjectMgr.GetPlayerTeamByGUID(guild->GetLeaderGuid()))
+        player->changeFactionToOpposite(player->getRace());
 }
 
 void WorldSession::HandleGuildDeclineOpcode(WorldPacket& /*recvPacket*/)

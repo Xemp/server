@@ -1642,7 +1642,16 @@ class MANGOS_DLL_SPEC Player : public Unit
         static Team TeamForRace(uint8 race);
         Team GetTeam() const { return m_team; }
         static uint32 getFactionForRace(uint8 race);
+        static uint8 getOppositeRace(uint8 race);
+        /// Gets the player's actual RaceMask in case of traitor
+        uint32 getRaceMaskReal() const { return 1 << (getRace()-1); }
+        /// Gets the player's opposite RaceMask to determine reputation difference
+        uint32 getRaceMaskOpposite() const { return 1 << (Player::getOppositeRace(getRace())-1); }
+        /// Changes the player's faction to the opposing side
+        void changeFactionToOpposite(uint8 race);
         void setFactionForRace(uint8 race);
+        /// Check if the player is a traitor
+        bool IsTraitor() const { return m_team == TeamForRace( getOppositeRace(getRace()) ); }
 
         void InitDisplayIds();
 
@@ -2147,6 +2156,7 @@ class MANGOS_DLL_SPEC Player : public Unit
         ObjectGuid m_lootGuid;
 
         Team m_team;
+        uint32 m_faction;
         uint32 m_nextSave;
         time_t m_speakTime;
         uint32 m_speakCount;
